@@ -15,12 +15,13 @@ class EmmyClassWriter:
         self.write_static_members: bool = True
         self.min_visibility: AccessModifier = AccessModifier.PUBLIC
         self.clazz_name: str = self.parent.get_lua_name(clazz.name)
+        self.identifier = self.clazz_name[self.clazz_name.rfind(".") + 1:]
 
     def write_function(self, name: str, parameter_names: list[str], static: bool, comment: LuaComment) -> str:
         if static:
-            name = self.clazz_name + "." + name
+            name = self.identifier + "." + name
         else:
-            name = "__" + self.clazz_name + ":" + name
+            name = "__" + self.identifier + ":" + name
 
         string = self.parent.write_function(
             name,
@@ -69,7 +70,7 @@ class EmmyClassWriter:
 
         comment.add_lines("@type " + self.parent.format_type_reference(field.type))
 
-        return str(comment) + f"\n{self.clazz_name}.{field.name} = nil\n"
+        return str(comment) + f"\n{self.identifier}.{field.name} = nil\n"
 
     def get_class_name(self) -> str:
         name = self.clazz_name
@@ -124,14 +125,18 @@ class EmmyClassWriter:
                     methods.append(method)
 
         if self.write_instance_members:
-            instance_table = "__" + self.clazz_name
+            instance_table = "__" + self.identifier
             string += f"\nlocal {instance_table} = {{}}\n\n"
 
             for method in methods:
                 string += self.write_method(method) + "\n"
 
         if self.write_static_members:
-            static_table = self.clazz_name
+            static_table = self.identifier
+
+            # TODO: if there are multiple classes with the same clazz_name, only the last one's static table should
+            #  be rendered as global
+            #  the other(s) should be local (to be exposed through package.name.clazz_name = static_table)
             string += (f"{static_table} = {{}}\n\n"
                        f"{self.clazz.name.replace("/", ".")} = {static_table}\n\n")
 
