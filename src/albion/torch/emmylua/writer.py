@@ -7,7 +7,7 @@ from albion.torch.docs import Deprecable
 from . import LuaComment, combine_strings_spaced
 
 
-RESERVED_NAMES: set[str] = {
+RESERVED_IDENTIFIERS: set[str] = {
     "and",
     "break",
     "do",
@@ -29,6 +29,60 @@ RESERVED_NAMES: set[str] = {
     "true",
     "until",
     "while"
+}
+
+
+RESERVED_TYPE_NAMES: set[str] = {
+    "nil",
+    "boolean",
+    "number",
+    "integer",
+    "userdata",
+    "lightuserdata",
+    "thread",
+    "table",
+    "any",
+    "void",
+    "self",
+    "int",
+    "integer",
+    "namespace",
+    "function",
+    "std.NotNull",
+    "std.Nullable",
+    "std.Select",
+    "std.Unpack",
+    "std.RawGet",
+    "std.ConstTpl",
+    "type",
+    "std.type",
+    "collectgarbage_opt",
+    "std.collectgarbage_opt",
+    "metatable",
+    "std.metatable",
+    "TypeGuard",
+    "Language",
+    "Parameters",
+    "ConstructorParameters",
+    "Partial",
+    "bit32lib",
+    "coroutinelib",
+    "debuglib",
+    "debuglib.DebugInfo",
+    "debuglib.InfoWhat",
+    "debuglib.Hookmask",
+    "std.loadmode",
+    "iolib",
+    "iolib.OpenMode",
+    "std.readmode",
+    "file",
+    "mathlib",
+    "oslib",
+    "std.osdate",
+    "std.osdateparam",
+    "packagelib",
+    "string",
+    "tablelib"
 }
 
 
@@ -146,7 +200,7 @@ class EmmyWriter:
             parameter_names: list[str] = []
             for parameter in executable.docs.parameters:
                 name = parameter.name
-                if name in RESERVED_NAMES:
+                if name in RESERVED_IDENTIFIERS:
                     name = "_" + name
                 parameter_names.append(name)
 
