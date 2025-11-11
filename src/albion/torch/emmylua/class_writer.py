@@ -159,6 +159,6 @@ class EmmyClassWriter:
                     string += self.write_constructor(constructor) + "\n"
 
         if self.write_static_members and self.write_instance_members:
-            string += f"__classmetatables[{static_table}.class] = {{__index = {instance_table}}}\n"
+            string += f"__classmetatables[{static_table}.class] = {{__index = {instance_table}}}"
 
         return string + "\n"
