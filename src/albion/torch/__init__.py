@@ -52,7 +52,7 @@ class Torch:
         return package.classes[clazz_name]
 
     def has_class(self, clazz: str) -> bool:
-        if clazz in PRIMITIVE_TYPES:
+        if clazz in PRIMITIVE_TYPE_NAMES:
             return True
 
         return self.get_class(clazz) is not None
