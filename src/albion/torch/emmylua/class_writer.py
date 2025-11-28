@@ -129,8 +129,6 @@ class EmmyClassWriter:
                     methods.append(method)
 
         if self.write_instance_members:
-            if string != "":
-                string += "\n"
             instance_table = "__" + self.identifier
             string += f"local {instance_table} = {{}}\n"
 
