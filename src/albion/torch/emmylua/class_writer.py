@@ -37,6 +37,7 @@ class EmmyClassWriter:
         comment = self.parent.annotate_method(method)
 
         name = method.name
+        # TODO: this logic should be moved into torchzomboid
         annotation = method.get_annotation("se/krka/kahlua/integration/annotations/LuaMethod")
         if annotation is not None:
             name = annotation.arguments.get("name", name)
@@ -108,6 +109,9 @@ class EmmyClassWriter:
 
     def write(self) -> str:
         string = str(self.get_class_declaration())
+        # TODO: spamming this is ugly, write a function that adds newlines when needed
+        if string != "":
+            string += "\n"
 
         static_methods: list[Method] = []
         methods: list[Method] = []
@@ -125,40 +129,38 @@ class EmmyClassWriter:
                     methods.append(method)
 
         if self.write_instance_members:
+            if string != "":
+                string += "\n"
             instance_table = "__" + self.identifier
-            string += f"\nlocal {instance_table} = {{}}\n\n"
+            string += f"local {instance_table} = {{}}\n"
 
             for method in methods:
-                string += self.write_method(method) + "\n"
+                string += "\n" + self.write_method(method)
 
         if self.write_static_members:
+            if string != "":
+                string += "\n"
+
             static_table = self.identifier
 
             # TODO: if there are multiple classes with the same clazz_name, only the last one's static table should
             #  be rendered as global
             #  the other(s) should be local (to be exposed through package.name.clazz_name = static_table)
-            string += (f"{static_table} = {{}}\n\n"
-                       f"{self.clazz.name.replace("/", ".")} = {static_table}\n\n")
-
-            string += (f"---@type Class<{self.clazz_name}>\n"
-                       f"{static_table}.class = nil\n\n")
+            string += f"{static_table} = {{}}\n"
 
             for field in sorted(self.clazz.fields.values(), key=attrgetter("name")):
                 if not field.static or field.access_modifier > self.min_visibility or "$" in field.name:
                     continue
 
-                string += self.write_static_field(field) + "\n"
+                string += "\n" + self.write_static_field(field)
 
             for method in static_methods:
-                string += self.write_method(method) + "\n"
+                string += "\n" + self.write_method(method)
 
             if not self.clazz.is_abstract():
                 for constructor in self.clazz.constructors:
                     if constructor.access_modifier > self.min_visibility:
                         continue
-                    string += self.write_constructor(constructor) + "\n"
+                    string += "\n" + self.write_constructor(constructor)
 
-        if self.write_static_members and self.write_instance_members:
-            string += f"__classmetatables[{static_table}.class] = {{__index = {instance_table}}}"
-
-        return string + "\n"
+        return string
