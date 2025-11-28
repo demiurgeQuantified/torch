@@ -78,6 +78,19 @@ class TypeReference:
         return str(self)
 
 
+PRIMITIVE_TYPE_NAMES = {
+    "boolean",
+    "byte",
+    "char",
+    "short",
+    "int",
+    "long",
+    "float",
+    "double",
+    "void"
+}
+
+
 @dataclass
 class TypeArgument:
     type: TypeReference | None = None

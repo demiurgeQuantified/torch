@@ -1,7 +1,7 @@
 from pathlib import Path
 from collections.abc import Iterable
 
-from albion.torch.types import Class, TypeReference
+from albion.torch.types import Class, TypeReference, PRIMITIVE_TYPE_NAMES
 from albion.torch.analysis.analyser import create_class
 
 from .filesystem import FileSystem
@@ -25,19 +25,6 @@ class Package:
     def __init__(self, name: str) -> None:
         self.name: str = name
         self.classes: dict[str, Class] = {}
-
-
-PRIMITIVE_TYPES = {
-    "boolean",
-    "byte",
-    "char",
-    "short",
-    "int",
-    "long",
-    "float",
-    "double",
-    "void"
-}
 
 
 class Torch:
