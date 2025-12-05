@@ -53,22 +53,16 @@ def write_parameters(obj: dict[str, Any], executable: Method | Constructor) -> N
     if len(executable.parameters) < 1:
         return
 
-    if executable.docs is not None:
-        parameter_names = [doc.name for doc in executable.docs.parameters]
-    else:
-        parameter_names = ["arg" + str(i) for i in range(len(executable.parameters))]
-
     obj["parameters"] = [
         {
-            "name": parameter_names[i],
-            "type": write_type(parameter)
+            "name": parameter.name,
+            "type": write_type(parameter.type),
         } for i, parameter in enumerate(executable.parameters)
     ]
 
-    if executable.docs is not None:
-        for i, parameter in enumerate(executable.docs.parameters):
-            if parameter.notes != "":
-                obj["parameters"][i]["notes"] = parameter.notes
+    for i, parameter in enumerate(executable.parameters):
+        if parameter.notes != "":
+            obj["parameters"][i]["notes"] = parameter.notes
 
 
 def write_method(method: Method) -> dict[str, Any]:

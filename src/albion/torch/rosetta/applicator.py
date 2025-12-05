@@ -51,7 +51,7 @@ def compare_type(torch_type: TypeReference, rosetta_type: TypeReference, full: b
 def find_cluster_matches(cluster: list[Executable], rosetta: list[RosettaExecutable], class_name: str):
     for executable in cluster:
         doc_methods = [
-            doc for doc in rosetta if len(doc.parameter_types) == len(executable.parameters)
+            doc for doc in rosetta if len(doc.parameters) == len(executable.parameters)
         ]
 
         # bleugh...
@@ -64,8 +64,8 @@ def find_cluster_matches(cluster: list[Executable], rosetta: list[RosettaExecuta
 
         for i, parameter in enumerate(executable.parameters):
             for doc in reversed(doc_methods):
-                _type = doc.parameter_types[i]
-                if not compare_type(parameter, _type.type, _type.full):
+                _type = doc.parameters[i].type
+                if not compare_type(parameter.type, _type.type, _type.full):
                     doc_methods.remove(doc)
 
             if len(doc_methods) < 1:
@@ -82,6 +82,12 @@ def find_cluster_matches(cluster: list[Executable], rosetta: list[RosettaExecuta
 
             rosetta_method = doc_methods[0]
             executable.docs = rosetta_method.docs
+            for i, parameter in enumerate(executable.parameters):
+                rosetta_parameter = rosetta_method.parameters[i]
+                if rosetta_parameter.name != "":
+                    parameter.name = rosetta_parameter.name
+                if rosetta_parameter.notes != "":
+                    parameter.notes = rosetta_parameter.notes
             rosetta.remove(rosetta_method)
 
     for rosetta_method in rosetta:

@@ -1,6 +1,7 @@
+from collections.abc import Iterable
 from operator import attrgetter
 
-from albion.torch.types import Method, Constructor, Field, AccessModifier, Class
+from albion.torch.types import Method, Constructor, Field, AccessModifier, Class, Parameter
 
 from . import LuaComment
 from .writer import EmmyWriter
@@ -17,7 +18,7 @@ class EmmyClassWriter:
         self.clazz_name: str = self.parent.get_lua_name(clazz.name)
         self.identifier = self.clazz_name[self.clazz_name.rfind(".") + 1:]
 
-    def write_function(self, name: str, parameter_names: list[str], static: bool, comment: LuaComment) -> str:
+    def write_function(self, name: str, parameters: Iterable[Parameter], static: bool, comment: LuaComment) -> str:
         if static:
             name = self.identifier + "." + name
         else:
@@ -25,7 +26,7 @@ class EmmyClassWriter:
 
         string = self.parent.write_function(
             name,
-            parameter_names
+            parameters
         )
 
         if not comment.is_empty():
@@ -44,7 +45,7 @@ class EmmyClassWriter:
 
         return self.write_function(
             name,
-            self.parent.get_parameter_names(method),
+            method.parameters,
             method.static,
             comment
         )
@@ -57,7 +58,7 @@ class EmmyClassWriter:
 
         return self.write_function(
             "new",
-            self.parent.get_parameter_names(constructor),
+            constructor.parameters,
             True,
             comment
         )

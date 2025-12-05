@@ -190,8 +190,19 @@ class Documentable[T: DocNode]:
 
 
 @dataclass(kw_only=True)
+class Parameter:
+    type: TypeReference
+    name: str = ""
+    """
+    The empty string indicates that no name was found in the class file.
+    Obviously the empty string is not actually a valid name.
+    """
+    notes: str = ""
+
+
+@dataclass(kw_only=True)
 class Executable[T: DocExecutable](Documentable[T], HasTypeParameters, Annotatable):
-    parameters: list[TypeReference] = dataclasses.field(default_factory=list)
+    parameters: list[Parameter] = dataclasses.field(default_factory=list)
 
     def __str__(self) -> str:
         string = ""
@@ -237,7 +248,7 @@ class MethodCluster:
                 continue
 
             for i, _type in enumerate(parameter_types):
-                if method.parameters[i].basic != _type:
+                if method.parameters[i].type.basic != _type:
                     continue
 
             return method

@@ -7,8 +7,8 @@ import kirjava.types
 from kirjava import ClassFile
 from kirjava.classfile.attributes.shared import Annotations
 
-from albion.torch.types import Class, Method, Constructor, Field, AccessModifier, TypeReference, TypeElement, Annotation, \
-    InheritanceModifier
+from albion.torch.types import Class, Method, Constructor, Field, AccessModifier, TypeReference, TypeElement, \
+    Annotation, InheritanceModifier, Parameter
 
 from .signature import parse_class_signature, parse_method_signature, parse_type_signature
 
@@ -139,13 +139,28 @@ def create_methods(clazz: ClassFile, torch_class: Class) -> None:
             # parsing them is much more complex, but kirjava doesn't store the generics itself
             # so we only parse the signature if available
             parameters, returns, type_parameters = parse_method_signature(method.signature.signature.value)
-            executable.parameters = parameters
+            executable.parameters = [
+                Parameter(type=parameter) for parameter in parameters
+            ]
             if isinstance(executable, Method):
                 executable.returns = returns
             executable.type_parameters = type_parameters
         else:
             for parameter_type in method.argument_types:
-                executable.parameters.append(parse_type_reference(parameter_type))
+                executable.parameters.append(
+                    Parameter(type=parse_type_reference(parameter_type))
+                )
+
+        has_this = isinstance(executable, Method) and not executable.static
+
+        if method.code is not None and method.code.local_variable_table is not None \
+                and len(method.code.local_variable_table) \
+                >= len(executable.parameters) + (1 if has_this else 0):
+            for i, parameter in enumerate(executable.parameters):
+                if has_this:
+                    # skip over this
+                    i += 1
+                parameter.name = method.code.local_variable_table[i].name.value
 
         if method.runtime_visible_annotations is not None:
             executable.annotations = create_annotations(method.runtime_visible_annotations)

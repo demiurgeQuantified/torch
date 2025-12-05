@@ -9,12 +9,13 @@ import yaml
 
 from yamlcore import CoreLoader
 
-from albion.torch.docs import Deprecable, Nameable, DocNode, DocExecutable, DocParameter, DocMethod, DocReturn, \
+from albion.torch.docs import Deprecable, Nameable, DocNode, DocExecutable, DocMethod, DocReturn, \
     DocClass, DocField
 from albion.torch import TypeReference
 from albion.torch.types import TypeElement, TypeArgument, WildcardKind
 
-from . import RosettaType, RosettaClass, RosettaContext, RosettaMethod, RosettaField, RosettaPackage, RosettaConstructor
+from . import RosettaType, RosettaClass, RosettaContext, RosettaMethod, RosettaField, RosettaPackage, \
+    RosettaConstructor, RosettaExecutable
 
 
 def read(filepath: Path, format: str) -> dict:
@@ -187,19 +188,25 @@ def parse_type(obj: dict) -> RosettaType:
     )
 
 
-def get_parameter_types(obj: dict) -> list[RosettaType]:
-    parameter_types = []
+def get_parameters(obj: dict) -> list[RosettaExecutable.Parameter]:
+    parameters: list[RosettaExecutable.Parameter] = []
     if "parameters" in obj:
         for parameter in obj["parameters"]:
-            parameter_types.append(parse_type(parameter["type"]))
+            parameters.append(
+                RosettaExecutable.Parameter(
+                    parse_type(parameter["type"]),
+                    parameter.get("name", ""),
+                    parameter.get("notes", "")
+                )
+            )
 
-    return parameter_types
+    return parameters
 
 
 def method_from_rosetta(obj: dict) -> RosettaMethod:
     return RosettaMethod(
         deserialise(DocMethod, obj),
-        get_parameter_types(obj),
+        get_parameters(obj),
         parse_type(obj["return"]["type"])
     )
 
@@ -207,7 +214,7 @@ def method_from_rosetta(obj: dict) -> RosettaMethod:
 def constructor_from_rosetta(obj: dict) -> RosettaConstructor:
     return RosettaConstructor(
         deserialise(DocExecutable, obj),
-        get_parameter_types(obj)
+        get_parameters(obj)
     )
 
 
@@ -337,13 +344,6 @@ def _(obj: Nameable, rosetta: dict) -> None:
 @deserialiser(DocNode)
 def _(obj: DocNode, rosetta: dict) -> None:
     obj.notes = rosetta.get("notes", "")
-
-
-@deserialiser(DocExecutable)
-def _(obj: DocExecutable, rosetta: dict) -> None:
-    obj.parameters = [
-        deserialise(DocParameter, parameter) for parameter in rosetta.get("parameters", [])
-    ]
 
 
 @deserialiser(DocMethod)

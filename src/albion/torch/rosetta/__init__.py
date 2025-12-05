@@ -20,15 +20,16 @@ class RosettaType:
 
 @dataclass
 class RosettaExecutable[T: DocExecutable]:
+    @dataclass
+    class Parameter:
+        type: RosettaType
+        name: str
+        notes: str
     docs: T
-    parameter_types: list[RosettaType]
+    parameters: list[Parameter]
 
     def __repr__(self) -> str:
-        parameter_strings: list[str] = []
-        for i, parameter in enumerate(self.parameter_types):
-            parameter_strings.append(f"{self.docs.parameters[i].name}: {repr(parameter)}")
-
-        return f"({", ".join(parameter_strings)})"
+        return f"({", ".join(parameter.name + ": " + repr(parameter.type) for parameter in self.parameters)})"
 
 
 @dataclass

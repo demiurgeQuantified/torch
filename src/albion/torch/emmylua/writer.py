@@ -1,7 +1,8 @@
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 
-from albion.torch.types import TypeReference, TypeParameter, TypeArgument, WildcardKind, Executable, Method, Annotatable, \
-    Documentable
+from albion.torch.types import TypeReference, TypeParameter, TypeArgument, WildcardKind, Executable, Method, \
+    Annotatable, Documentable, Parameter
 from albion.torch.docs import Deprecable
 
 from . import LuaComment, combine_strings_spaced
@@ -153,12 +154,12 @@ class EmmyWriter:
 
         return name
 
-    def write_function(self, name: str, parameters: list[str]) -> str:
+    def write_function(self, name: str, parameters: Iterable[Parameter]) -> str:
         # TODO: escape reserved function names
         #  this is hard because we pass in names like 'clazz.or'
         #  so we need to check for that and do 'clazz["or"]'
         #  if it's an instance function we even have to add explicit self to the arguments :(
-        string = f"function {name}({", ".join(parameters)}) end\n"
+        string = f"function {name}({", ".join(self.get_parameter_names(parameters))}) end\n"
 
         return string
 
@@ -195,34 +196,27 @@ class EmmyWriter:
 
         return comment
 
-    def get_parameter_names(self, executable: Executable) -> list[str]:
-        if executable.docs is not None:
-            parameter_names: list[str] = []
-            for parameter in executable.docs.parameters:
-                name = parameter.name
-                if name in RESERVED_IDENTIFIERS:
-                    name = "_" + name
-                parameter_names.append(name)
+    def get_parameter_names(self, parameters: Iterable[Parameter]) -> list[str]:
+        parameter_names: list[str] = []
 
-            return parameter_names
+        for i, parameter in enumerate(parameters):
+            if parameter.name != "":
+                parameter_names.append(parameter.name)
+            else:
+                parameter_names.append("arg" + str(i))
 
-        return ["arg" + str(i) for i in range(len(executable.parameters))]
+        return parameter_names
 
-    def annotate_parameters(self, executable: Executable) -> LuaComment:
+    def annotate_parameters(self, parameters: Iterable[Parameter]) -> LuaComment:
         comment = LuaComment()
 
-        parameter_names = self.get_parameter_names(executable)
+        parameter_names = self.get_parameter_names(parameters)
 
-        if executable.docs is not None:
-            parameter_notes = [parameter.notes for parameter in executable.docs.parameters]
-        else:
-            parameter_notes = ["" for _ in executable.parameters]
-
-        for i, parameter in enumerate(executable.parameters):
+        for i, parameter in enumerate(parameters):
             comment.add_lines(
                 combine_strings_spaced(
-                    "@param", parameter_names[i], self.format_type_reference(parameter),
-                    parameter_notes[i]
+                    "@param", parameter_names[i], self.format_type_reference(parameter.type),
+                    parameter.notes
                 )
             )
 
@@ -237,7 +231,7 @@ class EmmyWriter:
             comment.add_lines(executable.docs.notes)
 
         comment += self.annotate_type_parameters(executable.type_parameters)
-        comment += self.annotate_parameters(executable)
+        comment += self.annotate_parameters(executable.parameters)
 
         return comment
 
