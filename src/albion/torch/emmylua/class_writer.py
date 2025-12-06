@@ -26,7 +26,7 @@ class EmmyClassWriter:
         string = self.parent.write_function(
             name,
             parameters,
-            static,
+            not static,
             table
         )
 
