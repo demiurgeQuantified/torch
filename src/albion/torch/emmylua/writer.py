@@ -116,6 +116,10 @@ def is_valid_identifier(identifier: str) -> bool:
     return True
 
 
+def format_string(string: str) -> str:
+    return '"' + string.replace('"', '\\"') + '"'
+
+
 class EmmyWriter:
     def __init__(self) -> None:
         self.lua_name_map: dict[str, str] = {}
@@ -186,7 +190,7 @@ class EmmyWriter:
                 parameter_names.insert(0, "self")
             string += name
         else:
-            string = containing_table + '["' + name + '"] = function'
+            string = containing_table + "[" + format_string(name) + "] = function"
             # add explicit self parameter since we can't use : when assigning backwards
             parameter_names.insert(0, "self")
 
