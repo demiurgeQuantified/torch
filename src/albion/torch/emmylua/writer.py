@@ -1,3 +1,5 @@
+import string
+
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 
@@ -86,6 +88,14 @@ RESERVED_TYPE_NAMES: set[str] = {
     "tablelib"
 }
 
+DIGITS: set[str] = set(string.digits)
+
+# in lua this is technically locale dependent but who cares
+# kahlua probably only likes ascii anyway
+VALID_CHARACTERS: set[str] = set(string.ascii_letters)
+VALID_CHARACTERS.update(DIGITS)
+VALID_CHARACTERS.add("_")
+
 
 @dataclass
 class LuaFunction:
@@ -99,6 +109,15 @@ class LuaFunction:
     returns: Parameter | None
     comment: LuaComment
     containing_tables: list[str] = field(default_factory=list)
+
+
+def sanitise_identifier(identifier: str) -> str:
+    identifier = "".join(char if char in VALID_CHARACTERS else "_" for char in identifier)
+
+    if identifier[0] in DIGITS or identifier in RESERVED_IDENTIFIERS:
+        identifier = "_" + identifier
+
+    return identifier
 
 
 class EmmyWriter:
@@ -201,9 +220,7 @@ class EmmyWriter:
 
         for i, parameter in enumerate(parameters):
             if parameter.name != "":
-                name = parameter.name
-                if name in RESERVED_IDENTIFIERS:
-                    name = "_" + name
+                name = sanitise_identifier(parameter.name)
             else:
                 name = "arg" + str(i)
 
