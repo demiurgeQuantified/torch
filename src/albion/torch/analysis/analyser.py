@@ -15,6 +15,7 @@ from .signature import parse_class_signature, parse_method_signature, parse_type
 
 ACC_PRIVATE = 0x0002
 ACC_PROTECTED = 0x0004
+ACC_STATIC = 0x0008
 
 
 def parse_element(element: Annotations.Element) -> Any:
@@ -69,6 +70,9 @@ def create_fields(clazz: ClassFile) -> dict[str, Field]:
     fields: dict[str, Field] = {}
 
     for field in clazz.fields:
+        if field.is_synthetic:
+            continue
+
         if field.is_public:
             access_modifier = AccessModifier.PUBLIC
         elif field.is_protected:
@@ -100,7 +104,7 @@ def create_fields(clazz: ClassFile) -> dict[str, Field]:
 
 def create_methods(clazz: ClassFile, torch_class: Class) -> None:
     for method in clazz.methods:
-        if method.name == "<clinit>":
+        if method.name == "<clinit>" or method.is_synthetic:
             continue
 
         if method.is_public:
@@ -151,15 +155,17 @@ def create_methods(clazz: ClassFile, torch_class: Class) -> None:
                     Parameter(type=parse_type_reference(parameter_type))
                 )
 
-        has_this = isinstance(executable, Method) and not executable.static
+        skip_parameter_names = 0
+        if (isinstance(executable, Method) and not executable.static) \
+                or (isinstance(executable, Constructor) and not torch_class.static and "." in torch_class.name):
+            # skip this in instance methods and inner class constructors
+            skip_parameter_names += 1
 
         if method.code is not None and method.code.local_variable_table is not None \
                 and len(method.code.local_variable_table) \
-                >= len(executable.parameters) + (1 if has_this else 0):
+                >= len(executable.parameters) + (1 if skip_parameter_names else 0):
             for i, parameter in enumerate(executable.parameters):
-                if has_this:
-                    # skip over this
-                    i += 1
+                i += skip_parameter_names
                 parameter.name = method.code.local_variable_table[i].name.value
 
         if method.runtime_visible_annotations is not None:
@@ -213,7 +219,8 @@ def create_class(path: Path) -> Class:
         inheritance_modifier=inheritance_modifier,
         type_parameters=type_parameters,
         fields=create_fields(clazz),
-        annotations=annotations
+        annotations=annotations,
+        static=(clazz.access_flags & ACC_STATIC) != 0
     )
 
     create_methods(clazz, torch_class)

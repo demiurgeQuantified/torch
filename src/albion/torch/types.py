@@ -307,13 +307,11 @@ class Field(ClassMember, MayBeStatic, Named, Annotatable, Documentable[DocField]
 
 
 @dataclass
-class Class(Named, HasTypeParameters, Annotatable, HasInheritanceModifier, Documentable[DocClass]):
+class Class(Named, HasTypeParameters, Annotatable, HasInheritanceModifier, MayBeStatic, Documentable[DocClass]):
     super: TypeReference | None
     """Superclass. This may only be None for java/lang/Object."""
 
     access_modifier: AccessModifier
-
-    access_flags: int
 
     implements: list[TypeReference] = dataclasses.field(default_factory=list)
 
