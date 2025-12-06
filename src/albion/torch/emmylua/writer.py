@@ -201,9 +201,13 @@ class EmmyWriter:
 
         for i, parameter in enumerate(parameters):
             if parameter.name != "":
-                parameter_names.append(parameter.name)
+                name = parameter.name
+                if name in RESERVED_IDENTIFIERS:
+                    name = "_" + name
             else:
-                parameter_names.append("arg" + str(i))
+                name = "arg" + str(i)
+
+            parameter_names.append(name)
 
         return parameter_names
 
