@@ -1,7 +1,6 @@
 import string
 
 from collections.abc import Iterable
-from dataclasses import dataclass, field
 
 from albion.torch.types import TypeReference, TypeParameter, TypeArgument, WildcardKind, Executable, Method, \
     Annotatable, Documentable, Parameter
@@ -95,20 +94,6 @@ DIGITS: set[str] = set(string.digits)
 VALID_CHARACTERS: set[str] = set(string.ascii_letters)
 VALID_CHARACTERS.update(DIGITS)
 VALID_CHARACTERS.add("_")
-
-
-@dataclass
-class LuaFunction:
-    class Parameter:
-        name: str
-        type: TypeReference
-        notes: str
-    name: str
-    has_self: bool
-    parameters: list[Parameter]
-    returns: Parameter | None
-    comment: LuaComment
-    containing_tables: list[str] = field(default_factory=list)
 
 
 def sanitise_identifier(identifier: str) -> str:
