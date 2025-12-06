@@ -19,14 +19,15 @@ class EmmyClassWriter:
         self.identifier = self.clazz_name[self.clazz_name.rfind(".") + 1:]
 
     def write_function(self, name: str, parameters: Iterable[Parameter], static: bool, comment: LuaComment) -> str:
-        if static:
-            name = self.identifier + "." + name
-        else:
-            name = "__" + self.identifier + ":" + name
+        table = self.identifier
+        if not static:
+            table = "__" + self.identifier
 
         string = self.parent.write_function(
             name,
-            parameters
+            parameters,
+            static,
+            table
         )
 
         if not comment.is_empty():

@@ -120,6 +120,17 @@ def sanitise_identifier(identifier: str) -> str:
     return identifier
 
 
+def is_valid_identifier(identifier: str) -> bool:
+    if identifier[0] in DIGITS or identifier in RESERVED_IDENTIFIERS:
+        return False
+
+    for char in identifier:
+        if char not in VALID_CHARACTERS:
+            return False
+
+    return True
+
+
 class EmmyWriter:
     def __init__(self) -> None:
         self.lua_name_map: dict[str, str] = {}
@@ -173,12 +184,28 @@ class EmmyWriter:
 
         return name
 
-    def write_function(self, name: str, parameters: Iterable[Parameter]) -> str:
-        # TODO: escape reserved function names
-        #  this is hard because we pass in names like 'clazz.or'
-        #  so we need to check for that and do 'clazz["or"]'
-        #  if it's an instance function we even have to add explicit self to the arguments :(
-        string = f"function {name}({", ".join(self.get_parameter_names(parameters))}) end\n"
+    def write_function(
+            self, name: str, parameters: Iterable[Parameter], has_self: bool = False, containing_table: str = ""
+    ) -> str:
+        parameter_names = self.get_parameter_names(parameters)
+
+        if is_valid_identifier(name):
+            string = "function " + containing_table
+            if containing_table != "":
+                if has_self:
+                    string += ":"
+                else:
+                    string += "."
+            elif has_self:
+                # add explicit self parameter since we can't use : without a table
+                parameter_names.insert(0, "self")
+            string += name
+        else:
+            string = containing_table + '["' + name + '"] = function'
+            # add explicit self parameter since we can't use : when assigning backwards
+            parameter_names.insert(0, "self")
+
+        string += f"({", ".join(parameter_names)}) end\n"
 
         return string
 
