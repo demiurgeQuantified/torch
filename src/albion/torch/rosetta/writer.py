@@ -64,6 +64,9 @@ def write_parameters(obj: dict[str, Any], executable: Method | Constructor) -> N
         if parameter.notes != "":
             obj["parameters"][i]["notes"] = parameter.notes
 
+        if parameter.nullable is not None:
+            obj["parameters"][i]["nullable"] = parameter.nullable
+
 
 def write_method(method: Method) -> dict[str, Any]:
     obj: dict[str, Any] = {
@@ -82,12 +85,20 @@ def write_method(method: Method) -> dict[str, Any]:
     write_parameters(obj, method)
 
     obj["return"] = {
-        "type": write_type(method.returns)
+        "type": write_type(method.returns.type)
     }
+
+    if method.returns.name != "":
+        obj["return"]["name"] = method.returns.name
+
+    if method.returns.notes != "":
+        obj["return"]["notes"] = method.returns.notes
+
+    if method.returns.nullable is not None:
+        obj["return"]["type"]["nullable"] = method.returns.nullable
 
     if method.docs is not None:
         apply_docs(obj, method.docs)
-        apply_docs(obj["return"], method.docs.returns)
 
     return obj
 

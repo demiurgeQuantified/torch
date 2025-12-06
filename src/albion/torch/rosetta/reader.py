@@ -9,8 +9,7 @@ import yaml
 
 from yamlcore import CoreLoader
 
-from albion.torch.docs import Deprecable, Nameable, DocNode, DocExecutable, DocMethod, DocReturn, \
-    DocClass, DocField
+from albion.torch.docs import Deprecable, Nameable, DocNode, DocExecutable, DocMethod, DocClass, DocField
 from albion.torch import TypeReference
 from albion.torch.types import TypeElement, TypeArgument, WildcardKind
 
@@ -167,7 +166,8 @@ def parse_type(obj: dict) -> RosettaType:
     if "full" in obj:
         return RosettaType(
             type_from_rosetta(obj["full"]),
-            True
+            True,
+            obj.get("nullable")
         )
 
     array_dimensions = 0
@@ -185,6 +185,7 @@ def parse_type(obj: dict) -> RosettaType:
             array_dimensions=array_dimensions
         ),
         False,
+        obj.get("nullable", None)
     )
 
 
@@ -204,10 +205,15 @@ def get_parameters(obj: dict) -> list[RosettaExecutable.Parameter]:
 
 
 def method_from_rosetta(obj: dict) -> RosettaMethod:
+    returns = obj["return"]
     return RosettaMethod(
         deserialise(DocMethod, obj),
         get_parameters(obj),
-        parse_type(obj["return"]["type"])
+        RosettaExecutable.Parameter(
+            parse_type(returns["type"]),
+            returns.get("name", ""),
+            returns.get("notes", "")
+        )
     )
 
 
@@ -344,8 +350,3 @@ def _(obj: Nameable, rosetta: dict) -> None:
 @deserialiser(DocNode)
 def _(obj: DocNode, rosetta: dict) -> None:
     obj.notes = rosetta.get("notes", "")
-
-
-@deserialiser(DocMethod)
-def _(obj: DocMethod, rosetta: dict) -> None:
-    obj.returns = deserialise(DocReturn, rosetta.get("return"))

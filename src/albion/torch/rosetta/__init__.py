@@ -13,6 +13,7 @@ class RosettaType:
     If false, the package will not be known, the qualification of the type is impossible to determine.
     The package elements will be within the main class elements: package will be an empty string.
     """
+    nullable: bool | None = None
 
     def __repr__(self) -> str:
         return str(self.type)
@@ -34,11 +35,11 @@ class RosettaExecutable[T: DocExecutable]:
 
 @dataclass
 class RosettaMethod(RosettaExecutable[DocMethod]):
-    return_type: RosettaType
+    returns: RosettaExecutable.Parameter
     static: bool = False
 
     def __repr__(self) -> str:
-        return f"{RosettaExecutable.__repr__(self)} -> {repr(self.return_type)}"
+        return f"{RosettaExecutable.__repr__(self)} -> {repr(self.returns)}"
 
 
 RosettaConstructor = RosettaExecutable[DocConstructor]

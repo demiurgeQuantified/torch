@@ -198,6 +198,18 @@ class Parameter:
     Obviously the empty string is not actually a valid name.
     """
     notes: str = ""
+    nullable: bool | None = None
+    """
+    Whether null is an acceptable argument.
+    Only valid for class type parameters.
+    None means we don't know.
+    """
+
+    def __str__(self) -> str:
+        return str(type)
+
+    def __repr__(self) -> str:
+        return repr(type)
 
 
 @dataclass(kw_only=True)
@@ -212,6 +224,25 @@ class Executable[T: DocExecutable](Documentable[T], HasTypeParameters, Annotatab
 
     def __repr__(self) -> str:
         return str(self)
+
+
+@dataclass(kw_only=True)
+class Return:
+    type: TypeReference
+    name: str = ""
+    notes: str = ""
+    nullable: bool | None = None
+    """
+    Whether the method could return null.
+    Only valid for class type returns.
+    None means we don't know.
+    """
+
+    def __str__(self) -> str:
+        return str(type)
+
+    def __repr__(self) -> str:
+        return repr(type)
 
 
 @dataclass

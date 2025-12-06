@@ -33,15 +33,9 @@ class DocConstructor(DocExecutable):
     pass
 
 
-class DocReturn(DocNode, Nameable):
-    def __init__(self) -> None:
-        super().__init__()
-
-
 class DocMethod(DocExecutable):
     def __init__(self) -> None:
         super().__init__()
-        self.returns: DocReturn | None = None
 
 
 class DocClass(DocNode, Deprecable):

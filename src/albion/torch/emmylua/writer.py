@@ -213,10 +213,13 @@ class EmmyWriter:
         parameter_names = self.get_parameter_names(parameters)
 
         for i, parameter in enumerate(parameters):
+            type_ = self.format_type_reference(parameter.type)
+            if parameter.nullable:
+                type_ += "?"
+
             comment.add_lines(
                 combine_strings_spaced(
-                    "@param", parameter_names[i], self.format_type_reference(parameter.type),
-                    parameter.notes
+                    "@param", parameter_names[i], type_, parameter.notes
                 )
             )
 
@@ -238,24 +241,25 @@ class EmmyWriter:
     def annotate_method(self, method: Method) -> LuaComment:
         comment = self.annotate_executable(method)
 
-        if method.returns.basic != "void":
-            if method.docs is not None:
-                if method.docs.returns.name != "":
-                    return_name = method.docs.returns.name
-                else:
-                    if method.docs.returns.notes != "":
-                        return_name = "#"
-                    else:
-                        return_name = ""
-                comment.add_lines(
-                    combine_strings_spaced(
-                        "@return",
-                        self.format_type_reference(method.returns),
-                        return_name,
-                        method.docs.returns.notes
-                    )
-                )
+        if method.returns.type.basic != "void":
+            if method.returns.name != "":
+                return_name = method.returns.name
+            elif method.returns.notes != "":
+                return_name = "#"
             else:
-                comment.add_lines("@return " + self.format_type_reference(method.returns))
+                return_name = ""
+
+            type_ = self.format_type_reference(method.returns.type)
+            if method.returns.nullable:
+                type_ += "?"
+
+            comment.add_lines(
+                combine_strings_spaced(
+                    "@return",
+                    type_,
+                    return_name,
+                    method.returns.notes
+                )
+            )
 
         return comment

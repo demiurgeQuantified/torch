@@ -8,7 +8,7 @@ from kirjava import ClassFile
 from kirjava.classfile.attributes.shared import Annotations
 
 from albion.torch.types import Class, Method, Constructor, Field, AccessModifier, TypeReference, TypeElement, \
-    Annotation, InheritanceModifier, Parameter
+    Annotation, InheritanceModifier, Parameter, Return
 
 from .signature import parse_class_signature, parse_method_signature, parse_type_signature
 
@@ -127,7 +127,7 @@ def create_methods(clazz: ClassFile, torch_class: Class) -> None:
 
             executable = Method(
                 name=method.name,
-                returns=parse_type_reference(method.return_type),
+                returns=Return(type=parse_type_reference(method.return_type)),
                 static=method.is_static,
                 access_modifier=access_modifier,
                 inheritance_modifier=inheritance_modifier
@@ -143,7 +143,7 @@ def create_methods(clazz: ClassFile, torch_class: Class) -> None:
                 Parameter(type=parameter) for parameter in parameters
             ]
             if isinstance(executable, Method):
-                executable.returns = returns
+                executable.returns = Return(type=returns)
             executable.type_parameters = type_parameters
         else:
             for parameter_type in method.argument_types:

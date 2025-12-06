@@ -59,7 +59,7 @@ def find_cluster_matches(cluster: list[Executable], rosetta: list[RosettaExecuta
             for doc in reversed(doc_methods):
                 assert isinstance(doc, RosettaMethod)
                 if not executable.static == doc.static \
-                        or not compare_type(executable.returns, doc.return_type.type, doc.return_type.full):
+                        or not compare_type(executable.returns.type, doc.returns.type.type, doc.returns.type.full):
                     doc_methods.remove(doc)
 
         for i, parameter in enumerate(executable.parameters):
@@ -88,6 +88,18 @@ def find_cluster_matches(cluster: list[Executable], rosetta: list[RosettaExecuta
                     parameter.name = rosetta_parameter.name
                 if rosetta_parameter.notes != "":
                     parameter.notes = rosetta_parameter.notes
+                if rosetta_parameter.type.nullable is not None and parameter.nullable is None:
+                    parameter.nullable = rosetta_parameter.type.nullable
+
+            if isinstance(rosetta_method, RosettaMethod):
+                rosetta_return = rosetta_method.returns
+                if rosetta_return.name != "":
+                    executable.returns.name = rosetta_return.name
+                if rosetta_return.notes != "":
+                    executable.returns.notes = rosetta_return.notes
+                if rosetta_return.type.nullable is not None and executable.returns.nullable is None:
+                    executable.returns.nullable = rosetta_return.type.nullable
+
             rosetta.remove(rosetta_method)
 
     for rosetta_method in rosetta:

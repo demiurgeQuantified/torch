@@ -87,8 +87,8 @@ class Torch:
         for method in clazz.get_all_methods():
             for parameter in method.parameters:
                 types |= get_all_referenced_types(parameter.type)
-            if method.returns.basic != "void":
-                types |= get_all_referenced_types(method.returns)
+            if method.returns.type.basic != "void":
+                types |= get_all_referenced_types(method.returns.type)
 
         for constructor in clazz.constructors:
             for parameter in constructor.parameters:
