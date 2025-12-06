@@ -247,7 +247,7 @@ class Return:
 
 @dataclass
 class Method(ClassMember, Executable[DocMethod], MayBeStatic, Named, HasInheritanceModifier):
-    returns: TypeReference
+    returns: Return
 
     def __str__(self) -> str:
         string = ""
@@ -272,7 +272,7 @@ class MethodCluster:
 
     def get_with_signature(self, parameter_types: Collection[str], return_type: str) -> Method | None:
         for method in self.methods:
-            if method.returns.basic != return_type:
+            if method.returns.type.basic != return_type:
                 continue
 
             if len(parameter_types) != len(method.parameters):
@@ -312,6 +312,8 @@ class Class(Named, HasTypeParameters, Annotatable, HasInheritanceModifier, Docum
     """Superclass. This may only be None for java/lang/Object."""
 
     access_modifier: AccessModifier
+
+    access_flags: int
 
     implements: list[TypeReference] = dataclasses.field(default_factory=list)
 
