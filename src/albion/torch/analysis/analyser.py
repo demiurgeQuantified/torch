@@ -155,18 +155,22 @@ def create_methods(clazz: ClassFile, torch_class: Class) -> None:
                     Parameter(type=parse_type_reference(parameter_type))
                 )
 
-        skip_parameter_names = 0
+        has_this = False
         if (isinstance(executable, Method) and not executable.static) \
                 or (isinstance(executable, Constructor) and not torch_class.static and "." in torch_class.name):
             # skip this in instance methods and inner class constructors
-            skip_parameter_names += 1
+            has_this = True
 
-        if method.code is not None and method.code.local_variable_table is not None \
-                and len(method.code.local_variable_table) \
-                >= len(executable.parameters) + (1 if skip_parameter_names else 0):
-            for i, parameter in enumerate(executable.parameters):
-                i += skip_parameter_names
-                parameter.name = method.code.local_variable_table[i].name.value
+        if method.code is not None and method.code.local_variable_table is not None and len(executable.parameters) > 0:
+            for local_variable in method.code.local_variable_table:
+                index = local_variable.index
+                if has_this:
+                    index -= 1
+
+                if index >= len(executable.parameters):
+                    continue
+
+                executable.parameters[index].name = local_variable.name.value
 
         if method.runtime_visible_annotations is not None:
             executable.annotations = create_annotations(method.runtime_visible_annotations)
