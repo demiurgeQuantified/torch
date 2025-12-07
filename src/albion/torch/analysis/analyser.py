@@ -4,11 +4,11 @@ from collections.abc import Iterable
 
 import kirjava
 import kirjava.types
-from kirjava import ClassFile
+from kirjava import ClassFile, MethodInfo
 from kirjava.classfile.attributes.shared import Annotations
 
 from albion.torch.types import Class, Method, Constructor, Field, AccessModifier, TypeReference, TypeElement, \
-    Annotation, InheritanceModifier, Parameter, Return
+    Annotation, InheritanceModifier, Parameter, Return, Executable
 
 from .signature import parse_class_signature, parse_method_signature, parse_type_signature
 
@@ -155,25 +155,34 @@ def create_methods(clazz: ClassFile, torch_class: Class) -> None:
                     Parameter(type=parse_type_reference(parameter_type))
                 )
 
-        has_this = False
-        if (isinstance(executable, Method) and not executable.static) \
-                or (isinstance(executable, Constructor) and not torch_class.static and "." in torch_class.name):
-            # skip this in instance methods and inner class constructors
-            has_this = True
-
-        if method.code is not None and method.code.local_variable_table is not None and len(executable.parameters) > 0:
-            for local_variable in method.code.local_variable_table:
-                index = local_variable.index
-                if has_this:
-                    index -= 1
-
-                if index >= len(executable.parameters):
-                    continue
-
-                executable.parameters[index].name = local_variable.name.value
+        analyse_parameter_names(executable, method)
 
         if method.runtime_visible_annotations is not None:
             executable.annotations = create_annotations(method.runtime_visible_annotations)
+
+
+def analyse_parameter_names(executable: Executable, method: MethodInfo):
+    if len(executable.parameters) < 1:
+        return
+
+    has_this = False
+    if (isinstance(executable, Method) and not executable.static) \
+            or isinstance(executable, Constructor):
+        # skip this in instance methods and constructors
+        has_this = True
+
+    if method.code is not None and method.code.local_variable_table is not None:
+        for local_variable in method.code.local_variable_table:
+            index = local_variable.index
+            if has_this:
+                index -= 1
+                if index < 0:
+                    continue
+
+            if index >= len(executable.parameters):
+                continue
+
+            executable.parameters[index].name = local_variable.name.value
 
 
 def create_class(path: Path) -> Class:
