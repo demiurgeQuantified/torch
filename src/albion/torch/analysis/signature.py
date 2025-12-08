@@ -275,4 +275,4 @@ def parse_class_signature(signature: str) -> tuple[TypeReference, list[TypeRefer
 
 
 def parse_type_signature(signature: str) -> TypeReference:
-    return SignatureParser(signature).parse_reference_type()
+    return SignatureParser(signature).parse_java_type()

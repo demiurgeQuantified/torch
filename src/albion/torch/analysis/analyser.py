@@ -165,24 +165,43 @@ def analyse_parameter_names(executable: Executable, method: MethodInfo):
     if len(executable.parameters) < 1:
         return
 
+    if method.code is None or method.code.local_variable_table is None:
+        return
+
+    parameters: dict[int, tuple[str, TypeReference]] = {}
+
     has_this = False
     if (isinstance(executable, Method) and not executable.static) \
             or isinstance(executable, Constructor):
         # skip this in instance methods and constructors
         has_this = True
 
-    if method.code is not None and method.code.local_variable_table is not None:
-        for local_variable in method.code.local_variable_table:
-            index = local_variable.index
-            if has_this:
-                index -= 1
-                if index < 0:
-                    continue
-
-            if index >= len(executable.parameters):
+    for local_variable in method.code.local_variable_table:
+        index = local_variable.index
+        if has_this:
+            index -= 1
+            if index < 0:
                 continue
 
-            executable.parameters[index].name = local_variable.name.value
+        # double length to account for possible wide parameters
+        if index >= len(executable.parameters) * 2:
+            continue
+
+        parameters[index] = (
+            local_variable.name.value,
+            parse_type_signature(local_variable.descriptor.value)
+        )
+
+    parameter_names: list[str] = []
+
+    for key in sorted(parameters.keys()):
+        parameter_names.append(parameters[key][0])
+
+    for i, parameter in enumerate(executable.parameters):
+        if i >= len(parameter_names):
+            # TODO: find out why this happens
+            break
+        parameter.name = parameter_names[i]
 
 
 def create_class(path: Path) -> Class:
