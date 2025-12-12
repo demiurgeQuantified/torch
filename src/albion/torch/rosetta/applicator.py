@@ -84,7 +84,7 @@ def find_cluster_matches(cluster: list[Executable], rosetta: list[RosettaExecuta
             executable.docs = rosetta_method.docs
             for i, parameter in enumerate(executable.parameters):
                 rosetta_parameter = rosetta_method.parameters[i]
-                if rosetta_parameter.name != "":
+                if not (rosetta_parameter.name == "" or rosetta_parameter.name == "arg" + str(i)):
                     parameter.name = rosetta_parameter.name
                 if rosetta_parameter.notes != "":
                     parameter.notes = rosetta_parameter.notes
