@@ -5,7 +5,7 @@ from collections.abc import Iterable
 import kirjava
 import kirjava.types
 from kirjava import ClassFile, MethodInfo
-from kirjava.classfile.attributes.shared import Annotations
+from kirjava.classfile.attributes.shared import Annotations, TargetType, FormalParameterTarget
 
 from albion.torch.types import Class, Method, Constructor, Field, AccessModifier, ClassType, TypeElement, \
     Annotation, InheritanceModifier, Parameter, Return, Executable, Type, Array, \
@@ -163,6 +163,20 @@ def create_methods(clazz: ClassFile, torch_class: Class) -> None:
 
         if method.runtime_visible_annotations is not None:
             executable.annotations = create_annotations(method.runtime_visible_annotations)
+
+        if method.runtime_visible_type_annotations is not None:
+            for annotation in method.runtime_visible_type_annotations:
+                type_ = parse_type_signature(annotation.descriptor.value)
+                assert Type.is_class(type_)
+                if type_.basic != "org/jspecify/annotations/Nullable":
+                    continue
+                # FIXME: this does not check what part of the type reference is being annotated
+
+                if annotation.target_type == TargetType.PARAMETER:
+                    parameter_index = cast(FormalParameterTarget, annotation.target_info).formal_parameter_index
+                    executable.parameters[parameter_index].nullable = True
+                elif annotation.target_type == TargetType.RETURN_TYPE:
+                    executable.returns.nullable = True
 
 
 def analyse_parameter_names(executable: Executable, method: MethodInfo):
