@@ -1,12 +1,12 @@
 from dataclasses import dataclass, field
 
-from albion.torch import TypeReference
+from albion.torch import Type
 from albion.torch.docs import DocExecutable, DocMethod, DocConstructor, DocField, DocClass
 
 
 @dataclass
 class RosettaType:
-    type: TypeReference
+    type: Type
     full: bool
     """
     Whether the type was inferred from a full type.

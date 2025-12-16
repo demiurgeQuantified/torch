@@ -1,6 +1,8 @@
-from albion.torch.types import TypeReference, TypeArgument, WildcardKind, TypeParameter, TypeElement
+from albion.torch.types import ClassType, TypeArgument, WildcardKind, TypeParameter, TypeElement, \
+    TypeVariable, Type, Primitive, ReferenceType, Array, \
+    PrimitiveTypeName
 
-PRIMITIVE_TYPE_MAP: dict[str, str] = {
+PRIMITIVE_TYPE_MAP: dict[str, PrimitiveTypeName] = {
     "Z": "boolean",
     "B": "byte",
     "C": "char",
@@ -34,7 +36,7 @@ ILLEGAL_IDENTIFIER_CHARACTERS: set[str] = {".", ";", "[", "/", "<", ">", ":"}
 class SignatureParser:
     """
 
-    https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-4.html#jvms-4.7.9.1
+    https://docs.oracle.com/javase/specs/jvms/se25/html/jvms-4.html
     """
     def __init__(self, signature: str) -> None:
         self.signature: str = signature
@@ -59,47 +61,33 @@ class SignatureParser:
 
         return self.signature[start:end]
 
-    def parse_type_variable(self) -> TypeReference:
+    def parse_type_variable(self) -> TypeVariable:
         assert self.peek() == "T"
         self.pos += 1
 
-        variable = TypeReference(
-            "",
-            elements=[
-                TypeElement(
-                    self.parse_identifier()
-                )
-            ],
-            is_type_variable=True
-        )
+        variable = TypeVariable(self.parse_identifier())
 
         if self.next() != ";":
             raise ValueError("Invalid identifier")
 
         return variable
 
-    def parse_java_type(self) -> TypeReference:
+    def parse_java_type(self) -> Type:
         prefix = self.peek()
         if prefix in PRIMITIVE_TYPE_MAP:
             self.pos += 1
-            return TypeReference(
-                "",
-                elements=[
-                    TypeElement(
-                        PRIMITIVE_TYPE_MAP[prefix]
-                    )
-                ]
-            )
+            return Primitive(PRIMITIVE_TYPE_MAP[prefix])
         return self.parse_reference_type()
 
-    def parse_array_type(self) -> TypeReference:
+    def parse_array_type(self) -> Array:
         assert self.peek() == "["
 
-        self.pos += 1
-        type = self.parse_java_type()
-        type.array_dimensions += 1
+        dimensions = 0
+        while self.peek() == "[":
+            dimensions += 1
+            self.pos += 1
 
-        return type
+        return Array(self.parse_java_type(), dimensions)
 
     def parse_type_arguments(self) -> list[TypeArgument]:
         assert self.peek() == "<"
@@ -147,7 +135,7 @@ class SignatureParser:
             type_arguments
         )
 
-    def parse_class_type(self) -> TypeReference:
+    def parse_class_type(self) -> ClassType:
         if not self.next() == "L":
             raise ValueError("Invalid class type")
 
@@ -169,7 +157,7 @@ class SignatureParser:
                 self.parse_simple_class_type(self.parse_identifier())
             )
 
-        _type = TypeReference(
+        _type = ClassType(
             "/".join(package_elements),
             type_elements
         )
@@ -178,7 +166,7 @@ class SignatureParser:
             raise ValueError("Invalid class type")
         return _type
 
-    def parse_reference_type(self) -> TypeReference:
+    def parse_reference_type(self) -> ReferenceType:
         match self.signature[self.pos]:
             case "L":
                 return self.parse_class_type()
@@ -200,7 +188,7 @@ class SignatureParser:
             assert self.peek() == ":"
             self.pos += 1
 
-            bounds: list[TypeReference] = []
+            bounds: list[ReferenceType] = []
             if self.peek() != ":":  # class bound
                 bounds.append(self.parse_reference_type())
 
@@ -218,7 +206,7 @@ class SignatureParser:
         self.pos += 1  # '>'
         return parameters
 
-    def parse_method(self) -> tuple[list[TypeReference], TypeReference, list[TypeParameter]]:
+    def parse_method(self) -> tuple[list[Type], Type, list[TypeParameter]]:
         if self.signature[0] == "<":
             type_parameters = self.parse_type_parameters()
         else:
@@ -227,7 +215,7 @@ class SignatureParser:
         assert self.signature[self.pos] == "(", "Method signature must begin with ("
         self.pos += 1  # '('
 
-        parameters: list[TypeReference] = []
+        parameters: list[Type] = []
         close_bracket = self.signature.find(")")
         while self.pos < close_bracket:
             parameters.append(self.parse_java_type())
@@ -249,7 +237,7 @@ class SignatureParser:
         assert self.pos == len(self.signature), "Method signature parsing did not reach end of string"
         return parameters, returns, type_parameters
 
-    def parse_class(self) -> tuple[TypeReference, list[TypeReference], list[TypeParameter]]:
+    def parse_class(self) -> tuple[ClassType, list[ClassType], list[TypeParameter]]:
         if self.signature[0] == "<":
             type_parameters = self.parse_type_parameters()
         else:
@@ -257,7 +245,7 @@ class SignatureParser:
 
         superclass = self.parse_class_type()
 
-        interfaces: list[TypeReference] = []
+        interfaces: list[ClassType] = []
         while self.pos < len(self.signature):
             interfaces.append(self.parse_class_type())
 
@@ -266,13 +254,13 @@ class SignatureParser:
         return superclass, interfaces, type_parameters
 
 
-def parse_method_signature(signature: str) -> tuple[list[TypeReference], TypeReference, list[TypeParameter]]:
+def parse_method_signature(signature: str) -> tuple[list[Type], Type, list[TypeParameter]]:
     return SignatureParser(signature).parse_method()
 
 
-def parse_class_signature(signature: str) -> tuple[TypeReference, list[TypeReference], list[TypeParameter]]:
+def parse_class_signature(signature: str) -> tuple[ClassType, list[ClassType], list[TypeParameter]]:
     return SignatureParser(signature).parse_class()
 
 
-def parse_type_signature(signature: str) -> TypeReference:
+def parse_type_signature(signature: str) -> Type:
     return SignatureParser(signature).parse_java_type()

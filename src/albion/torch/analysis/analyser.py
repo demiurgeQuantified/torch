@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from collections.abc import Iterable
 
 import kirjava
@@ -7,11 +7,11 @@ import kirjava.types
 from kirjava import ClassFile, MethodInfo
 from kirjava.classfile.attributes.shared import Annotations
 
-from albion.torch.types import Class, Method, Constructor, Field, AccessModifier, TypeReference, TypeElement, \
-    Annotation, InheritanceModifier, Parameter, Return, Executable
+from albion.torch.types import Class, Method, Constructor, Field, AccessModifier, ClassType, TypeElement, \
+    Annotation, InheritanceModifier, Parameter, Return, Executable, Type, Array, \
+    Primitive
 
 from .signature import parse_class_signature, parse_method_signature, parse_type_signature
-
 
 ACC_PRIVATE = 0x0002
 ACC_PROTECTED = 0x0004
@@ -40,13 +40,15 @@ def split_package_class_elements(typename: str) -> tuple[str, list[TypeElement]]
     return package, [TypeElement(class_name) for class_name in typename.split(".")]
 
 
-def parse_type_reference(type: kirjava.types.Type) -> TypeReference:
+def parse_type_reference(type: kirjava.types.Type) -> Type:
     if isinstance(type, kirjava.types.Array):
-        return TypeReference(
-            *split_package_class_elements(type.lowest_element.name.replace("$", ".")),
-            array_dimensions=type.dimensions
+        return Array(
+            parse_type_reference(type.lowest_element),
+            type.dimensions
         )
-    return TypeReference(
+    elif isinstance(type, kirjava.types.Primitive):
+        return Primitive(type.name)
+    return ClassType(
         *split_package_class_elements(type.name.replace("$", "."))
     )
 
@@ -56,9 +58,11 @@ def create_annotations(annotations: Annotations) -> list[Annotation]:
 
     if annotations is not None:
         for annotation in annotations:
+            type_ = parse_type_signature(annotation.descriptor.value)
+            assert Type.is_class(type_)
             torch_annotations.append(
                 Annotation(
-                    type=parse_type_signature(annotation.descriptor.value),
+                    type=type_,
                     arguments={element[0].value: parse_element(element[1]) for element in annotation.elements}
                 )
             )
@@ -168,7 +172,7 @@ def analyse_parameter_names(executable: Executable, method: MethodInfo):
     if method.code is None or method.code.local_variable_table is None:
         return
 
-    parameters: dict[int, tuple[str, TypeReference]] = {}
+    parameters: dict[int, tuple[str, Type]] = {}
 
     has_this = False
     if (isinstance(executable, Method) and not executable.static) \
@@ -212,13 +216,13 @@ def create_class(path: Path) -> Class:
         superclass, interfaces, type_parameters = parse_class_signature(clazz.signature.signature.value)
     else:
         if clazz.super_name is not None:
-            superclass = TypeReference(
+            superclass = ClassType(
                 *split_package_class_elements(clazz.super_name.replace("$", "."))
             )
         else:
             superclass = None
         interfaces = [
-            TypeReference(*split_package_class_elements(interface.replace("$", "."))) for interface in clazz.interface_names
+            ClassType(*split_package_class_elements(interface.replace("$", "."))) for interface in clazz.interface_names
         ]
         type_parameters = []
 

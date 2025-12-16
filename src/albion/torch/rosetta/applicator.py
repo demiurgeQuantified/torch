@@ -1,12 +1,24 @@
 from albion.torch import Torch
-from albion.torch.types import Executable, Method, TypeReference, WildcardKind, AccessModifier
+from albion.torch.types import Executable, Method, WildcardKind, AccessModifier, Type, Array
 
 from . import RosettaMethod, RosettaContext, RosettaExecutable
 
 
-def compare_type(torch_type: TypeReference, rosetta_type: TypeReference, full: bool) -> bool:
-    if torch_type.array_dimensions != rosetta_type.array_dimensions:
+def compare_type(torch_type: Type, rosetta_type: Type, full: bool) -> bool:
+    if type(torch_type) is not type(rosetta_type):
         return False
+
+    if Type.is_array(torch_type):
+        assert Type.is_array(rosetta_type)
+        if torch_type.dimensions != rosetta_type.dimensions:
+            return False
+        return compare_type(torch_type.component_type, rosetta_type.component_type, full)
+
+    if Type.is_primitive(torch_type) or Type.is_type_variable(torch_type):
+        assert Type.is_primitive(rosetta_type) or Type.is_type_variable(rosetta_type)
+        return torch_type.name == rosetta_type.name
+
+    assert Type.is_class(torch_type) and Type.is_class(rosetta_type)
 
     if full:
         if (torch_type.package != rosetta_type.package

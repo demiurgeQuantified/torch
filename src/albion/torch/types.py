@@ -1,8 +1,9 @@
 import enum
 import dataclasses
+from abc import ABC, abstractmethod
 
 from dataclasses import dataclass
-from typing import Any, Collection
+from typing import Any, Collection, TypeGuard, Literal
 
 from albion.torch.docs import DocClass, DocMethod, DocField, DocConstructor, DocNode, DocExecutable
 from albion.torch.util import OrderedEnum
@@ -42,40 +43,30 @@ class TypeElement:
         return str(self)
 
 
-@dataclass
-class TypeReference:
-    package: str
-    elements: list[TypeElement]
-    """The class preceded by any enclosing classes."""
-
-    array_dimensions: int = 0
-    is_type_variable: bool = False
+@dataclass(kw_only=True)
+class Type(ABC):
+    @abstractmethod
+    def simple_name(self) -> str: ...
 
     @property
-    def basic(self) -> str:
-        class_name = ".".join(element.name for element in self.elements)
-        if self.package != "":
-            return self.package + "/" + class_name
-        return class_name
+    @abstractmethod
+    def basic(self) -> str: ...
 
-    @property
-    def type_arguments(self) -> list["TypeArgument"]:
-        return self.elements[-1].type_arguments
+    @staticmethod
+    def is_class(reference: "Type") -> TypeGuard["ClassType"]:
+        return isinstance(reference, ClassType)
 
-    def simple_name(self) -> str:
-        string = ".".join(str(element) for element in self.elements)
-        return string + "[]" * self.array_dimensions
+    @staticmethod
+    def is_primitive(reference: "Type") -> TypeGuard["Primitive"]:
+        return isinstance(reference, Primitive)
 
-    def __str__(self) -> str:
-        string = self.simple_name()
+    @staticmethod
+    def is_type_variable(reference: "Type") -> TypeGuard["TypeVariable"]:
+        return isinstance(reference, TypeVariable)
 
-        if self.package != "":
-            string = self.package + "/" + string
-
-        return string
-
-    def __repr__(self) -> str:
-        return str(self)
+    @staticmethod
+    def is_array(reference: "Type") -> TypeGuard["Array"]:
+        return isinstance(reference, Array)
 
 
 PRIMITIVE_TYPE_NAMES = {
@@ -89,11 +80,88 @@ PRIMITIVE_TYPE_NAMES = {
     "double",
     "void"
 }
+type PrimitiveTypeName = Literal["boolean", "byte", "char", "short", "int", "long", "float", "double", "void"]
+
+
+@dataclass
+class Primitive(Type):
+    name: PrimitiveTypeName
+
+    def simple_name(self) -> str:
+        return self.name
+
+    @property
+    def basic(self) -> str:
+        return self.name
+
+
+class ReferenceType(Type, ABC):
+    pass
+
+
+@dataclass
+class ClassType(ReferenceType):
+    """
+    Note that a class type could really be an interface, annotation, enum, etc
+    """
+    package: str
+    elements: list[TypeElement]
+    """The class preceded by any enclosing classes."""
+
+    @property
+    def basic(self) -> str:
+        class_name = ".".join(element.name for element in self.elements)
+        if self.package != "":
+            return self.package + "/" + class_name
+        return class_name
+
+    @property
+    def type_arguments(self) -> list["TypeArgument"]:
+        return self.elements[-1].type_arguments
+
+    def simple_name(self) -> str:
+        return ".".join(str(element) for element in self.elements)
+
+    def __str__(self) -> str:
+        string = self.simple_name()
+
+        if self.package != "":
+            string = self.package + "/" + string
+
+        return string
+
+    def __repr__(self) -> str:
+        return str(self)
+
+
+@dataclass
+class TypeVariable(ReferenceType):
+    name: str
+
+    def simple_name(self) -> str:
+        return self.name
+
+    @property
+    def basic(self) -> str:
+        return self.name
+
+
+@dataclass
+class Array(ReferenceType):
+    component_type: Type
+    dimensions: int
+
+    def simple_name(self) -> str:
+        return self.component_type.simple_name() + "[]" * self.dimensions
+
+    @property
+    def basic(self) -> str:
+        return self.component_type.simple_name() + "[]" * self.dimensions
 
 
 @dataclass
 class TypeArgument:
-    type: TypeReference | None = None
+    type: Type | None = None
     """Represents either the literal type as an argument, or None when WildcardKind is UNBOUNDED"""
     wildcard_kind: WildcardKind = WildcardKind.NONE
 
@@ -126,7 +194,7 @@ class TypeArgument:
 @dataclass
 class TypeParameter:
     name: str
-    bounds: list[TypeReference] = dataclasses.field(default_factory=list)
+    bounds: list[ReferenceType] = dataclasses.field(default_factory=list)
 
     def __repr__(self) -> str:
         if len(self.bounds) > 0:
@@ -137,7 +205,7 @@ class TypeParameter:
 
 @dataclass
 class Annotation:
-    type: TypeReference
+    type: ClassType
     arguments: dict[str, Any]
 
 
@@ -191,7 +259,7 @@ class Documentable[T: DocNode]:
 
 @dataclass(kw_only=True)
 class Parameter:
-    type: TypeReference
+    type: Type
     name: str = ""
     """
     The empty string indicates that no name was found in the class file.
@@ -228,7 +296,7 @@ class Executable[T: DocExecutable](Documentable[T], HasTypeParameters, Annotatab
 
 @dataclass(kw_only=True)
 class Return:
-    type: TypeReference
+    type: Type
     name: str = ""
     notes: str = ""
     nullable: bool | None = None
@@ -303,17 +371,17 @@ class Constructor(ClassMember, Executable[DocConstructor]):
 
 @dataclass
 class Field(ClassMember, MayBeStatic, Named, Annotatable, Documentable[DocField]):
-    type: TypeReference
+    type: Type
 
 
 @dataclass
 class Class(Named, HasTypeParameters, Annotatable, HasInheritanceModifier, MayBeStatic, Documentable[DocClass]):
-    super: TypeReference | None
+    super: ClassType | None
     """Superclass. This may only be None for java/lang/Object."""
 
     access_modifier: AccessModifier
 
-    implements: list[TypeReference] = dataclasses.field(default_factory=list)
+    implements: list[ClassType] = dataclasses.field(default_factory=list)
 
     fields: dict[str, Field] = dataclasses.field(default_factory=dict)
     methods: dict[str, MethodCluster] = dataclasses.field(default_factory=dict)
@@ -332,7 +400,7 @@ class Class(Named, HasTypeParameters, Annotatable, HasInheritanceModifier, MayBe
 
         return methods
 
-    def get_all_supertypes(self) -> list[TypeReference]:
+    def get_all_supertypes(self) -> list[ClassType]:
         supertypes = []
         if self.super is not None:
             supertypes.append(self.super)

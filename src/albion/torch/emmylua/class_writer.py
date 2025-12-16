@@ -71,7 +71,7 @@ class EmmyClassWriter:
         if field.docs is not None:
             comment.add_lines(field.docs.notes)
 
-        comment.add_lines("@type " + self.parent.format_type_reference(field.type))
+        comment.add_lines("@type " + self.parent.format_type(field.type))
 
         return str(comment) + f"\n{self.identifier}.{field.name} = nil\n"
 
@@ -102,7 +102,7 @@ class EmmyClassWriter:
                 _super for _super in self.clazz.get_all_supertypes() if _super.basic != "java/lang/Object"
             ]
             if len(supers) > 0:
-                class_tag += ": " + ", ".join(self.parent.format_type_reference(_super) for _super in supers)
+                class_tag += ": " + ", ".join(self.parent.format_type(_super) for _super in supers)
 
         declaration = LuaComment()
         declaration.add_lines(class_tag)

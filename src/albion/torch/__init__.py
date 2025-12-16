@@ -1,24 +1,24 @@
 from pathlib import Path
 from collections.abc import Iterable
 
-from albion.torch.types import Class, TypeReference, PRIMITIVE_TYPE_NAMES
+from albion.torch.types import Class, ClassType, PRIMITIVE_TYPE_NAMES, Type
 from albion.torch.analysis.analyser import create_class
 
 from .filesystem import FileSystem
 
 
-def get_all_referenced_types(type: TypeReference) -> set[str]:
-    types = set()
+def get_all_referenced_types(type_: Type, types: set[str]) -> None:
+    if Type.is_class(type_):
+        types.add(type_.basic)
 
-    if not type.is_type_variable:
-        types.add(type.basic)
-
-    for element in type.elements:
-        for argument in element.type_arguments:
-            if argument.type is not None:
-                types |= get_all_referenced_types(argument.type)
-
-    return types
+        for element in type_.elements:
+            for argument in element.type_arguments:
+                if argument.type is not None:
+                    get_all_referenced_types(argument.type, types)
+    elif Type.is_primitive(type_):
+        types.add(type_.name)
+    elif Type.is_array(type_):
+        get_all_referenced_types(type_.component_type, types)
 
 
 class Package:
@@ -79,20 +79,20 @@ class Torch:
         types = set()
 
         for interface in clazz.get_all_supertypes():
-            types |= get_all_referenced_types(interface)
+            get_all_referenced_types(interface, types)
 
         for field in clazz.fields.values():
-            types |= get_all_referenced_types(field.type)
+            get_all_referenced_types(field.type, types)
 
         for method in clazz.get_all_methods():
             for parameter in method.parameters:
-                types |= get_all_referenced_types(parameter.type)
+                get_all_referenced_types(parameter.type, types)
             if method.returns.type.basic != "void":
-                types |= get_all_referenced_types(method.returns.type)
+                get_all_referenced_types(method.returns.type, types)
 
         for constructor in clazz.constructors:
             for parameter in constructor.parameters:
-                types |= get_all_referenced_types(parameter.type)
+                get_all_referenced_types(parameter.type, types)
 
         return types
 

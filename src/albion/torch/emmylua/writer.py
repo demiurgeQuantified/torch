@@ -2,8 +2,8 @@ import string
 
 from collections.abc import Iterable
 
-from albion.torch.types import TypeReference, TypeParameter, TypeArgument, WildcardKind, Executable, Method, \
-    Annotatable, Documentable, Parameter
+from albion.torch.types import TypeParameter, TypeArgument, WildcardKind, Executable, Method, \
+    Annotatable, Documentable, Parameter, Type, ClassType
 from albion.torch.docs import Deprecable
 
 from . import LuaComment, combine_strings_spaced
@@ -131,24 +131,21 @@ class EmmyWriter:
     def format_type_argument(self, argument: TypeArgument) -> str:
         match argument.wildcard_kind:
             case WildcardKind.NONE:
-                return self.format_type_reference(argument.type)
+                return self.format_type(argument.type)
             case WildcardKind.UNBOUNDED:
                 # TODO: should add ---@generic T
                 return "any"
             case WildcardKind.UPPER_BOUNDED:
                 # TODO: should add a ---@generic T: bound for these instead, but it's hard :(
-                return self.format_type_reference(argument.type)
+                return self.format_type(argument.type)
             case WildcardKind.LOWER_BOUNDED:
                 # TODO: union of all supers
                 return "any"
 
-    def format_type_reference(self, _type: TypeReference) -> str:
-        if _type.is_type_variable:
-            return _type.basic
-        else:
-            return self.format_type(_type)
+    def format_array(self, component_type: Type, dimensions: int) -> str:
+        return self.format_type(component_type) + "[]" * dimensions
 
-    def format_type(self, _type: TypeReference) -> str:
+    def format_class_type(self, _type: ClassType) -> str:
         name = self.get_lua_name(_type.basic)
 
         type_arguments = []
@@ -160,16 +157,29 @@ class EmmyWriter:
 
         return name
 
+    def format_type(self, _type: Type) -> str:
+        if Type.is_type_variable(_type):
+            return _type.name
+        elif Type.is_primitive(_type):
+            return self.get_lua_name(_type.name)
+        elif Type.is_array(_type):
+            return self.format_array(_type.component_type, _type.dimensions)
+
+        assert Type.is_class(_type)
+
+        return self.format_class_type(_type)
+
     def format_type_parameter(self, parameter: TypeParameter) -> str:
         name = parameter.name
 
         bounds: list[str] = []
         for bound in parameter.bounds:
-            if bound.basic == "java/lang/Object":
+            if Type.is_class(bound) and bound.basic == "java/lang/Object":
                 continue
-            bounds.append(self.format_type_reference(bound))
+            bounds.append(self.format_type(bound))
+
         if len(bounds) > 0:
-            name += ": " + ", ".join(self.format_type_reference(bound) for bound in parameter.bounds)
+            name += ": " + ", ".join(self.format_type(bound) for bound in parameter.bounds)
 
         return name
 
@@ -224,7 +234,7 @@ class EmmyWriter:
         for type_parameter in type_parameters:
             bounds = [bound for bound in type_parameter.bounds if bound.basic != "java/lang/Object"]
             if len(bounds) > 0:
-                bounds_str = ": " + ", ".join(self.format_type_reference(bound) for bound in bounds)
+                bounds_str = ": " + ", ".join(self.format_type(bound) for bound in bounds)
             else:
                 bounds_str = ""
             comment.add_lines("@generic " + type_parameter.name + bounds_str)
@@ -250,7 +260,7 @@ class EmmyWriter:
         parameter_names = self.get_parameter_names(parameters)
 
         for i, parameter in enumerate(parameters):
-            type_ = self.format_type_reference(parameter.type)
+            type_ = self.format_type(parameter.type)
             if parameter.nullable:
                 type_ += "?"
 
@@ -278,25 +288,27 @@ class EmmyWriter:
     def annotate_method(self, method: Method) -> LuaComment:
         comment = self.annotate_executable(method)
 
-        if method.returns.type.basic != "void":
-            if method.returns.name != "":
-                return_name = method.returns.name
-            elif method.returns.notes != "":
-                return_name = "#"
-            else:
-                return_name = ""
+        if Type.is_primitive(method.returns.type) and method.returns.type.name == "void":
+            return comment
 
-            type_ = self.format_type_reference(method.returns.type)
-            if method.returns.nullable:
-                type_ += "?"
+        if method.returns.name != "":
+            return_name = method.returns.name
+        elif method.returns.notes != "":
+            return_name = "#"
+        else:
+            return_name = ""
 
-            comment.add_lines(
-                combine_strings_spaced(
-                    "@return",
-                    type_,
-                    return_name,
-                    method.returns.notes
-                )
+        type_ = self.format_type(method.returns.type)
+        if method.returns.nullable:
+            type_ += "?"
+
+        comment.add_lines(
+            combine_strings_spaced(
+                "@return",
+                type_,
+                return_name,
+                method.returns.notes
             )
+        )
 
         return comment

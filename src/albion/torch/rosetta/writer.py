@@ -2,7 +2,7 @@ from operator import attrgetter
 from typing import Any
 from pathlib import Path
 
-from albion.torch import TypeReference
+from albion.torch import ClassType
 from albion.torch.types import Class, Field, Method, Constructor, InheritanceModifier
 from albion.torch.docs import DocNode, Deprecable
 
@@ -10,7 +10,7 @@ import yaml
 from yamlcore import CoreDumper
 
 
-def format_full_type(type: TypeReference) -> str:
+def format_full_type(type: ClassType) -> str:
     return str(type).replace(".", "$").replace("/", ".")
 
 
@@ -24,7 +24,7 @@ def apply_docs(obj: dict[str, Any], docs: DocNode):
             obj["deprecated"] = True
 
 
-def write_type(type: TypeReference) -> dict[str, Any]:
+def write_type(type: ClassType) -> dict[str, Any]:
     return {
         "basic": ".".join(element.name for element in type.elements),
         "full": format_full_type(type)

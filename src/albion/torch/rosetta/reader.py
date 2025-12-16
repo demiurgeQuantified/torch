@@ -10,8 +10,9 @@ import yaml
 from yamlcore import CoreLoader
 
 from albion.torch.docs import Deprecable, Nameable, DocNode, DocExecutable, DocMethod, DocClass, DocField
-from albion.torch import TypeReference
-from albion.torch.types import TypeElement, TypeArgument, WildcardKind
+from albion.torch import ClassType, PRIMITIVE_TYPE_NAMES
+from albion.torch.types import TypeElement, TypeArgument, WildcardKind, TypeVariable, Array, \
+    Type, Primitive
 
 from . import RosettaType, RosettaClass, RosettaContext, RosettaMethod, RosettaField, RosettaPackage, \
     RosettaConstructor, RosettaExecutable
@@ -66,13 +67,7 @@ def parse_type_argument(rosetta: str) -> TypeArgument:
 def parse_wildcard(rosetta: str) -> TypeArgument:
     if rosetta == "?":
         return TypeArgument(
-            type=TypeReference(
-                "",
-                elements=[TypeElement(
-                    "?",
-                )],
-                is_type_variable=True
-            ),
+            type=TypeVariable("?"),
             wildcard_kind=WildcardKind.UNBOUNDED,
         )
     else:
@@ -91,7 +86,7 @@ def parse_wildcard(rosetta: str) -> TypeArgument:
 
 
 
-def type_from_rosetta(rosetta: str) -> TypeReference:
+def type_from_rosetta(rosetta: str) -> Type:
     # bleeeurghhhhh
     array_dimensions: int = 0
     while rosetta.endswith("[]"):
@@ -99,67 +94,87 @@ def type_from_rosetta(rosetta: str) -> TypeReference:
         rosetta = rosetta[:-2]
 
     package, typename = split_package_class_name(rosetta)
-    package = package.replace(".", "/")
+    if package != "":
+        package = package.replace(".", "/")
 
-    elements: list[TypeElement] = []
-    type_arguments: list[TypeArgument] = []
+        elements: list[TypeElement] = []
+        type_arguments: list[TypeArgument] = []
 
-    argument_start: int = 0
-    identifier_start: int = 0
-    identifier_end: int = 0
-    depth: int = 0
-    i: int = 0
-    while i < len(typename):
-        char = typename[i]
+        argument_start: int = 0
+        identifier_start: int = 0
+        identifier_end: int = 0
+        depth: int = 0
+        i: int = 0
+        while i < len(typename):
+            char = typename[i]
 
-        if char == "<":
-            if depth == 0:
-                argument_start = i + 1
-            depth += 1
-        elif char == ">":
-            depth -= 1
-            assert depth >= 0
-            if depth == 0:
+            if char == "<":
+                if depth == 0:
+                    argument_start = i + 1
+                depth += 1
+            elif char == ">":
+                depth -= 1
+                assert depth >= 0
+                if depth == 0:
+                    type_arguments.append(
+                        parse_type_argument(typename[argument_start:i])
+                    )
+            elif depth == 1 and char == ",":
+                assert depth > 0
                 type_arguments.append(
                     parse_type_argument(typename[argument_start:i])
                 )
-        elif depth == 1 and char == ",":
-            assert depth > 0
-            type_arguments.append(
-                parse_type_argument(typename[argument_start:i])
-            )
-            argument_start = i + 1
-        elif depth == 0:
-            if char in whitespace and argument_start == i:
                 argument_start = i + 1
-            elif char == "$":
-                elements.append(
-                    TypeElement(
-                        typename[identifier_start:identifier_end],
-                        type_arguments
+            elif depth == 0:
+                if char in whitespace and argument_start == i:
+                    argument_start = i + 1
+                elif char == "$":
+                    elements.append(
+                        TypeElement(
+                            typename[identifier_start:identifier_end],
+                            type_arguments
+                        )
                     )
-                )
-                type_arguments = []
-                identifier_start = i + 1
-            else:
-                identifier_end = i + 1
+                    type_arguments = []
+                    identifier_start = i + 1
+                else:
+                    identifier_end = i + 1
 
-        i += 1
+            i += 1
 
-    assert depth == 0
+        assert depth == 0
 
-    elements.append(
-        TypeElement(
-            typename[identifier_start:identifier_end],
-            type_arguments
+        elements.append(
+            TypeElement(
+                typename[identifier_start:identifier_end],
+                type_arguments
+            )
         )
-    )
 
-    return TypeReference(
-        package,
-        elements,
-        array_dimensions=array_dimensions
-    )
+        type_ = ClassType(
+            package,
+            elements
+        )
+    elif typename in PRIMITIVE_TYPE_NAMES:
+        type_ = Primitive(
+            name=typename
+        )
+    else:
+        # FIXME:
+        #  types in the unnamed package will be assumed to be type variables,
+        #  this is minor because that's only an issue if you're in the unnamed package,
+        #  it cannot be imported
+        type_ = TypeVariable(
+            name=typename
+        )
+
+    if array_dimensions > 0:
+        type_ = Array(
+            type_,
+            array_dimensions
+        )
+
+    return type_
 
 
 def parse_type(obj: dict) -> RosettaType:
@@ -177,7 +192,7 @@ def parse_type(obj: dict) -> RosettaType:
         array_dimensions += 1
 
     return RosettaType(
-        TypeReference(
+        ClassType(
             "",
             [
                 TypeElement(element) for element in basic.split(".")
