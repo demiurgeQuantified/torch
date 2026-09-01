@@ -131,7 +131,7 @@ class SignatureParser:
             type_arguments = []
 
         return TypeElement(
-            identifier.replace("$", "."),
+            identifier,
             type_arguments
         )
 
@@ -156,10 +156,32 @@ class SignatureParser:
             type_elements.append(
                 self.parse_simple_class_type(self.parse_identifier())
             )
+        
+        # split elements that contain $s into separate elements
+        # this is done for consistency with rosetta,
+        # because the rosetta parser won't be able to determine if elements should be merged or not
+        # that would be avoidable if rosetta used type names in the internal format, but i don't want to make breaking changes
+        # as far as i know there is no benefit to keeping them together anyway
+        split_elements: list[TypeElement] = []
+        for element in type_elements:
+            element_parts = element.name.split("$")
+            if len(element_parts) > 1:
+                element.name = element_parts[-1]
+                for part in element_parts[:-1]:
+                    split_elements.append(
+                        TypeElement(
+                            part,
+                            []
+                        )
+                    )
+
+            split_elements.append(element)
+            continue
+            
 
         _type = ClassType(
             "/".join(package_elements),
-            type_elements
+            split_elements
         )
 
         if not self.next() == ";":
