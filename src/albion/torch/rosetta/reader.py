@@ -119,16 +119,16 @@ def type_from_rosetta(rosetta: str) -> Type:
                     type_arguments.append(
                         parse_type_argument(typename[argument_start:i])
                     )
-            elif depth == 1 and char == ",":
-                assert depth > 0
-                type_arguments.append(
-                    parse_type_argument(typename[argument_start:i])
-                )
-                argument_start = i + 1
-            elif depth == 0:
-                if char in whitespace and argument_start == i:
+            elif depth == 1:
+                if char == ",":
+                    type_arguments.append(
+                        parse_type_argument(typename[argument_start:i])
+                    )
                     argument_start = i + 1
-                elif char == "$":
+                elif char in whitespace and argument_start == i:
+                    argument_start = i + 1
+            elif depth == 0:
+                if char == "$":
                     elements.append(
                         TypeElement(
                             typename[identifier_start:identifier_end],
