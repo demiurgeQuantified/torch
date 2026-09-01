@@ -3,7 +3,7 @@ from typing import Any
 from pathlib import Path
 
 from albion.torch import ClassType
-from albion.torch.types import Class, Field, Method, Constructor, InheritanceModifier
+from albion.torch.types import Class, Field, Method, Constructor, InheritanceModifier, Type
 from albion.torch.docs import DocNode, Deprecable
 
 import yaml
@@ -24,9 +24,9 @@ def apply_docs(obj: dict[str, Any], docs: DocNode):
             obj["deprecated"] = True
 
 
-def write_type(type: ClassType) -> dict[str, Any]:
+def write_type(type: Type) -> dict[str, Any]:
     return {
-        "basic": ".".join(element.name for element in type.elements),
+        "basic": type.simple_name().split("<", 1)[0],
         "full": format_full_type(type)
     }
 

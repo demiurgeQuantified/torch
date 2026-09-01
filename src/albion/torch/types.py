@@ -1,9 +1,10 @@
 import enum
 import dataclasses
-from abc import ABC, abstractmethod
 
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Collection, TypeGuard, Literal
+from typing import Any, TypeGuard, Literal
+from collections.abc import Collection
 
 from albion.torch.docs import DocClass, DocMethod, DocField, DocConstructor, DocNode, DocExecutable
 from albion.torch.util import OrderedEnum
@@ -34,6 +35,11 @@ class TypeElement:
     name: str
     type_arguments: list["TypeArgument"] = dataclasses.field(default_factory=list)
 
+    def simple_name(self) -> str:
+        if len(self.type_arguments) > 0:
+            return f"{self.name}<{", ".join(argument.simple_name() for argument in self.type_arguments)}>"
+        return f"{self.name}"
+
     def __str__(self) -> str:
         if len(self.type_arguments) > 0:
             return f"{self.name}<{", ".join(str(argument) for argument in self.type_arguments)}>"
@@ -47,10 +53,17 @@ class TypeElement:
 class Type(ABC):
     @abstractmethod
     def simple_name(self) -> str: ...
+    """
+    Name of the class and any type arguments, all without the package specified.
+    This is the most human representation as it is generally how it appears in source code,
+    although it does not avoid ambiguity.
+    To include package names use str() instead.
+    """
 
     @property
     @abstractmethod
     def basic(self) -> str: ...
+    """Fully qualified class and package, but without any type arguments."""
 
     @staticmethod
     def is_class(reference: "Type") -> TypeGuard["ClassType"]:
@@ -94,6 +107,12 @@ class Primitive(Type):
     def basic(self) -> str:
         return self.name
 
+    def __str__(self) -> str:
+        return self.basic
+
+    def __repr__(self) -> str:
+        return str(self)
+
 
 class ReferenceType(Type, ABC):
     pass
@@ -120,10 +139,10 @@ class ClassType(ReferenceType):
         return self.elements[-1].type_arguments
 
     def simple_name(self) -> str:
-        return ".".join(str(element) for element in self.elements)
+        return ".".join(element.simple_name() for element in self.elements)
 
     def __str__(self) -> str:
-        string = self.simple_name()
+        string = ".".join(str(element) for element in self.elements)
 
         if self.package != "":
             string = self.package + "/" + string
@@ -157,6 +176,12 @@ class Array(ReferenceType):
     @property
     def basic(self) -> str:
         return self.component_type.simple_name() + "[]" * self.dimensions
+
+    def __str__(self) -> str:
+        return str(self.component_type) + "[]" * self.dimensions
+    
+    def __repr__(self) -> str:
+        return str(self)
 
 
 @dataclass
@@ -274,10 +299,10 @@ class Parameter:
     """
 
     def __str__(self) -> str:
-        return str(type)
+        return str(self.type)
 
     def __repr__(self) -> str:
-        return repr(type)
+        return repr(self.type)
 
 
 @dataclass(kw_only=True)
@@ -307,10 +332,10 @@ class Return:
     """
 
     def __str__(self) -> str:
-        return str(type)
+        return str(self.type)
 
     def __repr__(self) -> str:
-        return repr(type)
+        return repr(self.type)
 
 
 @dataclass
