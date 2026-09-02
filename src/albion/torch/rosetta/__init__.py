@@ -35,11 +35,12 @@ class RosettaExecutable[T: DocExecutable]:
 
 @dataclass
 class RosettaMethod(RosettaExecutable[DocMethod]):
+    name: str
     returns: RosettaExecutable.Parameter
     static: bool = False
 
     def __repr__(self) -> str:
-        return f"{RosettaExecutable.__repr__(self)} -> {repr(self.returns)}"
+        return f"{self.name}{RosettaExecutable.__repr__(self)} -> {repr(self.returns)}"
 
 
 RosettaConstructor = RosettaExecutable[DocConstructor]

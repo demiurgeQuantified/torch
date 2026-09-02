@@ -224,6 +224,7 @@ def method_from_rosetta(obj: dict) -> RosettaMethod:
     return RosettaMethod(
         deserialise(DocMethod, obj),
         get_parameters(obj),
+        obj.get("name"),
         RosettaExecutable.Parameter(
             parse_type(returns["type"]),
             returns.get("name", ""),
@@ -261,12 +262,12 @@ def from_rosetta(obj: dict, context: RosettaContext | None = None) -> RosettaCon
 
             for method in clazz.get("methods", []):
                 rosetta_method = method_from_rosetta(method)
-                rosetta_class.get_methods(method["name"]).append(rosetta_method)
+                rosetta_class.get_methods(rosetta_method.name).append(rosetta_method)
 
             for method in clazz.get("staticMethods", []):
                 rosetta_method = method_from_rosetta(method)
                 rosetta_method.static = True
-                rosetta_class.get_methods(method["name"]).append(rosetta_method)
+                rosetta_class.get_methods(rosetta_method.name).append(rosetta_method)
 
             for constructor in clazz.get("constructors", []):
                 rosetta_class.constructors.append(
