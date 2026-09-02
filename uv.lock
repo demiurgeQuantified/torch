@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.12"
 
 [[package]]
@@ -7,11 +7,20 @@ name = "albion-torch"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "kirjava-jvm" },
     { name = "yamlcore" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "yamlcore", specifier = "==0.0.4" }]
+requires-dist = [
+    { name = "kirjava-jvm", editable = "lib/kirjava" },
+    { name = "yamlcore", specifier = "==0.0.4" },
+]
+
+[[package]]
+name = "kirjava-jvm"
+version = "0.1.8"
+source = { editable = "lib/kirjava" }
 
 [[package]]
 name = "pyyaml"

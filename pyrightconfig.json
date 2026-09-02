@@ -1,0 +1,5 @@
+{
+    "extraPaths": [
+        "lib/kirjava/src"
+    ]
+}
